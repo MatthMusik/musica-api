@@ -1,4 +1,4 @@
-package musicaapi;
+package musicaapi.catalogo;
 
 import java.util.List;
 
@@ -9,5 +9,7 @@ public interface RepositorioCanciones extends JpaRepository<Cancion, Long> {
     List<Cancion> findByGeneroIgnoreCase(String genero);
 
     List<Cancion> findByTituloContainingIgnoreCase(String titulo);
+
+    List<Cancion> findByArtistaIgnoreCase(String artista);
     
 }

@@ -1,4 +1,4 @@
-package musicaapi;
+package musicaapi.catalogo;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;

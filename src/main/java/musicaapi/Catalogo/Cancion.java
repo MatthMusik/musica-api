@@ -1,9 +1,10 @@
-package musicaapi;
+package musicaapi.catalogo;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
 
 
 @Entity 
@@ -17,6 +18,9 @@ public class Cancion {
     private String artista;
     private String genero;
     private int anio;
+
+    @ManyToOne
+    private Album album;
 
     public Cancion() {
     }
@@ -34,10 +38,12 @@ public class Cancion {
     public String getArtista() {return artista;}
     public String getGenero() {return genero;}
     public int getAnio() {return anio;}
+    public Album getAlbum() { return album; }
 
     public void setTitulo(String titulo) {this.titulo = titulo;}
     public void setArtista(String artista) {this.artista = artista;}
     public void setGenero(String genero) {this.genero = genero;}
     public void setAnio(int anio) {this.anio = anio;}
+    public void setAlbum(Album album) { this.album = album; }
     
 }

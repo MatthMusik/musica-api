@@ -1,7 +1,9 @@
-package musicaapi;
+package musicaapi.catalogo;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,17 +15,24 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.Valid;
 
 @RestController
 public class CancionController {
 
+    private static final Logger logger = LoggerFactory.getLogger(CancionController.class);
     private final RepositorioCanciones cancionRepository;
+    private final Counter cancionesCreadas;
 
-    public CancionController(RepositorioCanciones cancionRepository) {
+    public CancionController(RepositorioCanciones cancionRepository,
+                         MeterRegistry meterRegistry) {
         this.cancionRepository = cancionRepository;
-    }
-  
+        this.cancionesCreadas = Counter.builder("musica.canciones.creadas")
+            .description("Cantidad de canciones creadas")
+            .register(meterRegistry);
+    }  
 
     @GetMapping("/cancion")
     public List<Cancion> listarCanciones(@RequestParam(required = false) String genero) {
@@ -31,6 +40,11 @@ public class CancionController {
             return cancionRepository.findAll();
         }
         return cancionRepository.findByGeneroIgnoreCase(genero);
+    }
+
+    @GetMapping("/cancion/buscar")
+    public List<Cancion> buscarPorArtista(@RequestParam String artista) {
+        return cancionRepository.findByArtistaIgnoreCase(artista);
     }
 
     @GetMapping("/cancion/{id}")
@@ -49,8 +63,10 @@ public class CancionController {
                 request.anio()
         );
         Cancion guardada = cancionRepository.save(nueva);
-        return ResponseEntity.status(HttpStatus.CREATED).body(guardada);
-    }
+                cancionesCreadas.increment();
+                logger.info("Canción creada: {} - {}", guardada.getTitulo(), guardada.getArtista());
+            return ResponseEntity.status(HttpStatus.CREATED).body(guardada);          
+          }
 
     @PutMapping("/cancion/{id}")
     public ResponseEntity<Cancion> actualizarCancion(
@@ -68,15 +84,17 @@ public class CancionController {
                 return ResponseEntity.ok(actualizada);
             })
             .orElse(ResponseEntity.notFound().build());
-}
+    }
 
     @DeleteMapping("/cancion/{id}")
-    public ResponseEntity<Void> eliminarCancion(@PathVariable Long id) {
-        if (!cancionRepository.existsById(id)) {            
-            return ResponseEntity.notFound().build();
-        }
+        public ResponseEntity<Void> eliminarCancion(@PathVariable Long id) {
+        if (!cancionRepository.existsById(id)) {
+            logger.warn("Se intentó eliminar una canción que no existe, id: {}", id);
+          return ResponseEntity.notFound().build();
+    }
 
         cancionRepository.deleteById(id);
-        return ResponseEntity.noContent().build();
- } 
+            logger.info("Canción eliminada, id: {}", id);
+         return ResponseEntity.noContent().build();
+ }
 }
