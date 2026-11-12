@@ -12,7 +12,8 @@ public class LogController {
     private static final Logger logger = LoggerFactory.getLogger(LogController.class);
 
     @GetMapping("/procesar")
-    public String procesar(@RequestParam(defaultValue = "normal") String tipo) {
+    public String procesar(
+           @RequestParam(defaultValue = "normal") String tipo) {
 
         logger.info("Se recibió una solicitud con tipo: {}", tipo);
 
