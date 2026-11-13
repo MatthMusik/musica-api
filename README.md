@@ -1,10 +1,10 @@
 # Música API
 
-API REST desarrollada con Spring Boot que gestiona un catálogo de canciones y álbumes, guarda la información con JPA e Hibernate, consume una API externa de música (Deezer) y expone herramientas de observabilidad (métricas, logs, trazas y estado de salud).
+API REST desarrollada con Spring Boot que gestiona un catálogo de canciones y álbumes, guarda la información en MySQL con JPA e Hibernate, consume una API externa de música (Deezer) y expone herramientas de observabilidad (métricas, logs, trazas y estado de salud).
 
 ## Contexto
 
-El contexto elegido es la **música**. La API permite crear, consultar, actualizar y eliminar canciones (CRUD), buscarlas por género y por artista, agruparlas en álbumes, y buscar canciones reales en Deezer. Los datos se guardan en una base H2 en memoria, por lo que se reinician al detener la aplicación.
+El contexto elegido es la **música**. La API permite crear, consultar, actualizar y eliminar canciones (CRUD), buscarlas por género y por artista, agruparlas en álbumes, y buscar canciones reales en Deezer.
 
 ## Integrantes
 
@@ -16,7 +16,7 @@ El contexto elegido es la **música**. La API permite crear, consultar, actualiz
 - Spring Boot 4.1.1
 - Spring Web MVC
 - Spring Data JPA (`JpaRepository`) e Hibernate
-- Base de datos H2 (en memoria) con consola web
+- MySQL
 - Jakarta Validation
 - `RestClient` (consumo de API externa)
 - Spring Boot Actuator, Micrometer y Prometheus
@@ -24,21 +24,33 @@ El contexto elegido es la **música**. La API permite crear, consultar, actualiz
 - SLF4J (logging)
 - Maven
 
+## Configuración de MySQL
+
+1. Tener un servidor MySQL activo en `localhost:3306`.
+2. La aplicación usa la base de datos `musica_db`. Se crea automáticamente al arrancar si no existe. Si prefieres crearla a mano:
+
+```sql
+CREATE DATABASE musica_db;
+```
+
+3. La conexión se configura en `src/main/resources/application.properties`. Por defecto usa el usuario `root`.
+4. **La contraseña no está en el repositorio.** Se lee de la variable de entorno `MYSQL_PASSWORD`. Si tu usuario `root` tiene contraseña, defínela antes de ejecutar (en PowerShell):
+
+```powershell
+$env:MYSQL_PASSWORD='tu_contraseña'
+```
+
+Si tu `root` no tiene contraseña, no hace falta definir nada. Hibernate crea las tablas `album` y `cancion` automáticamente.
+
 ## Cómo ejecutarlo
 
-Desde la carpeta raíz del proyecto, ejecuta en la terminal:
+Desde la carpeta raíz del proyecto, en la misma terminal donde definiste la variable, ejecuta:
 
 ```
 .\mvnw spring-boot:run
 ```
 
-También se puede ejecutar desde VS Code con el botón **Run** sobre el método `main` de `MusicaApiApplication`. La aplicación queda disponible en `http://localhost:8080`.
-
-Consola de H2 (`http://localhost:8080/h2-console`):
-
-- **JDBC URL:** `jdbc:h2:mem:musicadb`
-- **User Name:** `sa`
-- **Password:** (vacía)
+La aplicación queda disponible en `http://localhost:8080`.
 
 ## Estructura del proyecto
 
@@ -49,6 +61,13 @@ musicaapi
 ├── observabilidad  Health indicator, logs de ejemplo y trazas
 └── MusicaApiApplication.java
 ```
+
+## Entidades y relación
+
+- **Album**: `id` y `nombre`.
+- **Cancion**: `id`, `titulo`, `artista`, `genero`, `anio` y `album`.
+
+La relación es **muchos a uno** (`@ManyToOne`): muchas canciones pertenecen a un álbum, y una canción puede no tener álbum. En la base de datos, la tabla `cancion` tiene la columna `album_id`, que es una llave foránea hacia la tabla `album`.
 
 ## Endpoints
 
@@ -67,20 +86,26 @@ Reglas de validación para `POST` y `PUT`: `titulo`, `artista` y `genero` son ob
 ### Álbumes
 
 - `POST /album`: crea un álbum (201 Created).
-- `POST /album/{albumId}/cancion`: crea una canción asociada a un álbum (201 Created, o 404 si el álbum no existe). Relación `@ManyToOne`: muchas canciones pertenecen a un álbum.
+- `POST /album/{albumId}/cancion`: crea una canción asociada a un álbum (201 Created, o 404 si el álbum no existe).
 
-### API externa (Deezer)
+## API externa utilizada
 
-- `GET /deezer/buscar?texto=queen`: busca canciones en Deezer y devuelve título, artista y álbum. Si el servicio externo falla, responde 502 Bad Gateway con un mensaje de error.
+La aplicación consume la **API pública de Deezer** (`https://api.deezer.com`), que no requiere clave ni registro. Se usa `RestClient` para consultar su buscador (`/search?q=...`).
 
-### Observabilidad
+- `GET /deezer/buscar?texto=queen`: busca canciones en Deezer y devuelve título, artista y álbum.
 
-- `GET /actuator/health`: estado de la aplicación, incluyendo un componente propio `canciones` que comprueba la base de datos.
+**Manejo de errores:** si Deezer no responde o falla la conexión, la aplicación lo registra en el log con nivel ERROR y responde `502 Bad Gateway` con un mensaje claro, en vez de un error genérico.
+
+## Observabilidad
+
+La aplicación usa Spring Boot Actuator y Micrometer. Los endpoints están disponibles en `http://localhost:8080`:
+
+- `GET /actuator/health`: estado de la aplicación, con un indicador propio llamado `canciones` que comprueba que la base de datos responde y muestra el total de canciones.
 - `GET /actuator/metrics`: lista de métricas disponibles.
-- `GET /actuator/metrics/musica.canciones.creadas`: métrica propia que cuenta las canciones creadas.
+- `GET /actuator/metrics/musica.canciones.creadas`: **métrica personalizada** que cuenta las canciones creadas con `POST /cancion`.
 - `GET /actuator/prometheus`: métricas en formato Prometheus.
-- `GET /procesar?tipo=normal|advertencia|error`: genera logs de nivel INFO, WARN y ERROR.
-- `GET /traza`: devuelve el `traceId` y el `spanId` de la solicitud.
+- `GET /procesar?tipo=normal|advertencia|error`: genera logs de nivel INFO, WARN y ERROR, que se ven en la terminal.
+- `GET /traza`: devuelve el `traceId` y el `spanId` de la solicitud. Estos identificadores también aparecen en las líneas de log.
 
 ## Ejemplo
 
@@ -102,3 +127,8 @@ Respuesta `201 Created`:
   "titulo": "Bohemian Rhapsody",
   "artista": "Queen",
   "genero": "Rock",
+  "anio": 1975,
+  "album": null,
+  "id": 1
+}
+```
