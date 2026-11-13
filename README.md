@@ -102,7 +102,3 @@ Respuesta `201 Created`:
   "titulo": "Bohemian Rhapsody",
   "artista": "Queen",
   "genero": "Rock",
-
-  ## MySQL 
-
-El proyecto incluye el archivo `application-mysql.properties` y el conector de MySQL, que permitirían guardar los datos de forma persistente. Está **configurado pero no se ha probado**, y la aplicación usa H2 por defecto. 
