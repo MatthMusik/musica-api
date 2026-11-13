@@ -103,6 +103,6 @@ Respuesta `201 Created`:
   "artista": "Queen",
   "genero": "Rock",
 
-  ## MySQL (opcional)
+  ## MySQL 
 
-El proyecto incluye el archivo `application-mysql.properties` y el conector de MySQL, que permitirían guardar los datos de forma persistente. Está **configurado pero no se ha probado**, y la aplicación usa H2 por defecto. La contraseña se lee de la variable de entorno `MYSQL_PASSWORD` para no guardarla en el repositorio.
+El proyecto incluye el archivo `application-mysql.properties` y el conector de MySQL, que permitirían guardar los datos de forma persistente. Está **configurado pero no se ha probado**, y la aplicación usa H2 por defecto. 
